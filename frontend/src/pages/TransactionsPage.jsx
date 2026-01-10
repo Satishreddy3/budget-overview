@@ -8,8 +8,17 @@ function toDateInputValue(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+// ✅ USD formatter
+const formatUSD = (value) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+
 export default function TransactionsPage() {
-  const { transactions = [], fetchTransactions, month, year } = useOutletContext() || {};
+  const { transactions = [], fetchTransactions, month, year } =
+    useOutletContext() || {};
 
   // Add form
   const [type, setType] = useState("expense");
@@ -36,8 +45,15 @@ export default function TransactionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function openDate(t) {
+    return t?.date || t?.createdAt || Date.now();
+  }
+
   const monthLabel = useMemo(() => {
-    const names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const names = [
+      "Jan","Feb","Mar","Apr","May","Jun",
+      "Jul","Aug","Sep","Oct","Nov","Dec"
+    ];
     return `${names[month] ?? ""} ${year ?? ""}`.trim();
   }, [month, year]);
 
@@ -55,10 +71,6 @@ export default function TransactionsPage() {
       return db - da;
     });
   }, [transactions, filterType, search]);
-
-  function openDate(t) {
-    return t?.date || t?.createdAt || Date.now();
-  }
 
   const addTransaction = async () => {
     const amt = Number(amount);
@@ -146,10 +158,22 @@ export default function TransactionsPage() {
 
   return (
     <div className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "flex-end",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
-          <h2 className="h2" style={{ marginBottom: 6 }}>Transactions</h2>
-          <div className="muted">Viewing: <b>{monthLabel}</b></div>
+          <h2 className="h2" style={{ marginBottom: 6 }}>
+            Transactions
+          </h2>
+          <div className="muted">
+            Viewing: <b>{monthLabel}</b>
+          </div>
         </div>
       </div>
 
@@ -169,7 +193,7 @@ export default function TransactionsPage() {
 
         <input
           className="input"
-          placeholder="Amount"
+          placeholder="Amount (USD)"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
@@ -201,7 +225,9 @@ export default function TransactionsPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        <div className="muted">Showing <b>{filteredTransactions.length}</b> transactions</div>
+        <div className="muted">
+          Showing <b>{filteredTransactions.length}</b> transactions
+        </div>
       </div>
 
       {/* Table */}
@@ -219,14 +245,23 @@ export default function TransactionsPage() {
           <tbody>
             {filteredTransactions.map((t) => (
               <tr key={t._id}>
-                <td><span className={`badge ${t.type}`}>{t.type}</span></td>
+                <td>
+                  <span className={`badge ${t.type}`}>{t.type}</span>
+                </td>
                 <td>{t.category}</td>
-                <td>₹{Number(t.amount || 0).toLocaleString("en-IN")}</td>
+
+                {/* ✅ USD output */}
+                <td>{formatUSD(t.amount)}</td>
+
                 <td>{new Date(openDate(t)).toLocaleDateString()}</td>
                 <td>
                   <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <button className="btn" onClick={() => openEdit(t)}>Edit</button>
-                    <button className="btn" onClick={() => deleteTx(t._id)}>Delete</button>
+                    <button className="btn" onClick={() => openEdit(t)}>
+                      Edit
+                    </button>
+                    <button className="btn" onClick={() => deleteTx(t._id)}>
+                      Delete
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -234,7 +269,9 @@ export default function TransactionsPage() {
           </tbody>
         </table>
       ) : (
-        <p className="muted" style={{ marginTop: 14 }}>No transactions for this month.</p>
+        <p className="muted" style={{ marginTop: 14 }}>
+          No transactions for this month.
+        </p>
       )}
 
       {/* Edit modal */}
@@ -260,8 +297,12 @@ export default function TransactionsPage() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-              <h2 className="h2" style={{ margin: 0 }}>Edit Transaction</h2>
-              <button className="btn" onClick={closeEdit}>✕</button>
+              <h2 className="h2" style={{ margin: 0 }}>
+                Edit Transaction
+              </h2>
+              <button className="btn" onClick={closeEdit}>
+                ✕
+              </button>
             </div>
 
             <div
@@ -288,7 +329,7 @@ export default function TransactionsPage() {
                 className="input"
                 value={editAmount}
                 onChange={(e) => setEditAmount(e.target.value)}
-                placeholder="Amount"
+                placeholder="Amount (USD)"
               />
 
               <input
@@ -300,7 +341,9 @@ export default function TransactionsPage() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-              <button className="btn" onClick={closeEdit}>Cancel</button>
+              <button className="btn" onClick={closeEdit}>
+                Cancel
+              </button>
               <button className="btn" onClick={saveEdit} disabled={loading}>
                 {loading ? "Saving…" : "Save"}
               </button>

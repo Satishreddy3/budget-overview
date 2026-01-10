@@ -1,16 +1,21 @@
 import { useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 
-function formatINR(n) {
+/* ✅ USD formatter */
+function formatUSD(n) {
   const num = Number(n || 0);
-  return `₹${num.toLocaleString("en-IN")}`;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(num);
 }
 
 function toDateLabel(d) {
   if (!d) return "-";
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return "-";
-  return dt.toLocaleDateString("en-GB");
+  return dt.toLocaleDateString("en-US"); // MM/DD/YYYY
 }
 
 function Card({ title, value, sub, tone = "neutral" }) {
@@ -31,7 +36,7 @@ function Card({ title, value, sub, tone = "neutral" }) {
         background: "rgba(255,255,255,0.06)",
         border: "1px solid rgba(255,255,255,0.10)",
         minWidth: 180,
-        flex: "1 1 220px", // ✅ responsive
+        flex: "1 1 220px",
       }}
     >
       <div style={{ fontSize: 12, opacity: 0.75 }}>{title}</div>
@@ -78,13 +83,19 @@ export default function SummaryPage() {
 
     for (const t of transactions) {
       const amt = Number(t.amount || 0);
-      if (t.type === "income") income += amt;
+
+      if (t.type === "income") {
+        income += amt;
+      }
+
       if (t.type === "expense") {
         expense += amt;
+
         expenseByCategory.set(
           t.category,
           (expenseByCategory.get(t.category) || 0) + amt
         );
+
         if (!biggestExpense || amt > biggestExpense.amount) {
           biggestExpense = {
             category: t.category,
@@ -97,27 +108,26 @@ export default function SummaryPage() {
 
     let topCategory = null;
     for (const [cat, amt] of expenseByCategory.entries()) {
-      if (!topCategory || amt > topCategory.amount)
+      if (!topCategory || amt > topCategory.amount) {
         topCategory = { category: cat, amount: amt };
+      }
     }
 
     let safe = 0,
       warn = 0,
       exceeded = 0;
-    const warnings = [];
 
     for (const b of budgets) {
       const limit = Number(b.limit ?? b.amount ?? 0);
       const spent = Number(expenseByCategory.get(b.category) || 0);
+
       if (limit <= 0) continue;
+
       const pct = (spent / limit) * 100;
-      if (pct >= 100) {
-        exceeded++;
-        warnings.push({ cat: b.category, pct, spent, limit, tone: "bad" });
-      } else if (pct >= 80) {
-        warn++;
-        warnings.push({ cat: b.category, pct, spent, limit, tone: "warn" });
-      } else safe++;
+
+      if (pct >= 100) exceeded++;
+      else if (pct >= 80) warn++;
+      else safe++;
     }
 
     return {
@@ -130,11 +140,10 @@ export default function SummaryPage() {
       safe,
       warn,
       exceeded,
-      warnings,
     };
   }, [transactions, budgets]);
 
-  /* ✅ EMPTY STATE */
+  /* EMPTY STATE */
   if (transactions.length === 0) {
     return (
       <div style={{ padding: 24, opacity: 0.75 }}>
@@ -152,13 +161,13 @@ export default function SummaryPage() {
         {monthLabel && <span style={{ opacity: 0.7 }}>({monthLabel})</span>}
       </h2>
 
-      {/* ✅ Responsive cards */}
+      {/* Cards */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-        <Card title="Income" value={formatINR(computed.income)} tone="good" />
-        <Card title="Expense" value={formatINR(computed.expense)} tone="bad" />
+        <Card title="Income" value={formatUSD(computed.income)} tone="good" />
+        <Card title="Expense" value={formatUSD(computed.expense)} tone="bad" />
         <Card
           title="Balance"
-          value={formatINR(computed.balance)}
+          value={formatUSD(computed.balance)}
           tone={computed.balance >= 0 ? "good" : "bad"}
         />
       </div>
@@ -183,7 +192,7 @@ export default function SummaryPage() {
         <div style={{ marginTop: 12 }}>
           <b>Top category:</b>{" "}
           {computed.topCategory
-            ? `${computed.topCategory.category} — ${formatINR(
+            ? `${computed.topCategory.category} — ${formatUSD(
                 computed.topCategory.amount
               )}`
             : "—"}
@@ -192,7 +201,7 @@ export default function SummaryPage() {
         <div>
           <b>Biggest expense:</b>{" "}
           {computed.biggestExpense
-            ? `${computed.biggestExpense.category} — ${formatINR(
+            ? `${computed.biggestExpense.category} — ${formatUSD(
                 computed.biggestExpense.amount
               )} (${toDateLabel(computed.biggestExpense.date)})`
             : "—"}

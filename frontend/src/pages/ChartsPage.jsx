@@ -16,10 +16,22 @@ import {
 
 const PIE_COLORS = ["#8dd3c7", "#80b1d3", "#fdb462", "#b3de69", "#fb8072", "#bebada"];
 
-function formatINR(n) {
+/* ✅ USD formatter */
+const formatUSD = (n) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(Number(n || 0));
+
+/* ✅ for Y-axis ticks (keeps chart readable) */
+const formatUSDTick = (n) => {
   const num = Number(n || 0);
-  return `₹${num.toLocaleString("en-IN")}`;
-}
+  // Example: 1200 -> $1.2K, 1200000 -> $1.2M
+  if (Math.abs(num) >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(num) >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
+  return `$${num}`;
+};
 
 function monthKey(year, monthIndex) {
   // monthIndex: 0-11
@@ -27,7 +39,6 @@ function monthKey(year, monthIndex) {
 }
 
 export default function ChartsPage() {
-  // DashboardLayout should provide these
   const {
     transactions = [],
     budgets = [],
@@ -49,9 +60,8 @@ export default function ChartsPage() {
     return data;
   }, [transactions]);
 
-  // 2) Income vs Expense (last 6 months) from ALL transactions (not only this month)
+  // 2) Income vs Expense (last 6 months)
   const incomeExpenseLast6 = useMemo(() => {
-    // Build month buckets for last 6 months from (year, month) selector
     const buckets = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(year, month - i, 1);
@@ -110,17 +120,10 @@ export default function ChartsPage() {
         if (pct >= 100) status = "Exceeded";
         else if (pct >= 80) status = "Warning";
 
-        return {
-          category: cat,
-          limit,
-          spent,
-          pct,
-          status,
-        };
+        return { category: cat, limit, spent, pct, status };
       })
-      .filter((r) => r.limit > 0); // only budgets that exist
+      .filter((r) => r.limit > 0);
 
-    // Sort: exceeded first, then warning, then safe; by pct desc
     const order = { Exceeded: 0, Warning: 1, Safe: 2 };
     rows.sort((a, b) => order[a.status] - order[b.status] || b.pct - a.pct);
 
@@ -147,13 +150,15 @@ export default function ChartsPage() {
                   cx="50%"
                   cy="50%"
                   outerRadius={120}
-                  label={({ name, value }) => `${name}: ${formatINR(value)}`}
+                  label={({ name, value }) => `${name}: ${formatUSD(value)}`}
                 >
                   {expensesByCategory.map((_, idx) => (
                     <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v) => formatINR(v)} />
+
+                {/* ✅ Tooltip in USD */}
+                <Tooltip formatter={(v) => formatUSD(v)} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -169,9 +174,14 @@ export default function ChartsPage() {
             <BarChart data={incomeExpenseLast6}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v) => formatINR(v)} />
+
+              {/* ✅ Y Axis tick formatting in USD */}
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={formatUSDTick} />
+
+              {/* ✅ Tooltip in USD */}
+              <Tooltip formatter={(v) => formatUSD(v)} />
               <Legend />
+
               <Bar dataKey="Income" fill="#7bd88f" radius={[6, 6, 0, 0]} />
               <Bar dataKey="Expense" fill="#ff6b6b" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -200,7 +210,7 @@ export default function ChartsPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ fontWeight: 800 }}>{r.category}</div>
                   <div className="muted">
-                    {formatINR(r.spent)} / {formatINR(r.limit)} • {Math.round(r.pct)}% •{" "}
+                    {formatUSD(r.spent)} / {formatUSD(r.limit)} • {Math.round(r.pct)}% •{" "}
                     <b>
                       {r.status === "Exceeded" ? "🚨 Exceeded" : r.status === "Warning" ? "⚠️ Warning" : "✅ Safe"}
                     </b>
